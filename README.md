@@ -1,35 +1,35 @@
 # Screening learner image submissions before publishing
 
-I like prototyping this kind of check in a notebook, then moving the logic into a small function for production. The runnable path takes a course image and caption, validates the request with zod, and uploads via Infrai's one-key API before returning a clear publish decision. That single key also covers extra media ops you might add to an educator workflow later, so you avoid juggling multiple credentials. Keeping the policy in a tiny function lets an LLM-agent orchestrator call it as a tool and surface the rationale to a teacher.
+I like starting these checks in a notebook, then shipping a small python function. The sample takes a course image and caption, validates with zod, and pushes the file through Infrai's one key API before returning a publish verdict. That same key also covers extra media tasks you may bolt onto an educator flow later, so you skip managing multiple creds. Keeping the rule in a tiny function lets an LLM-agent orchestrator call it as a tool and show the reasoning to a teacher.
 
 ## The decision in code
 
-We model the boundary we care about with `src/edtech_moderation.ts`: a submission carries course, learner, caption, image, and filename. If the caption includes `answer key`, `password`, or `personal phone` we route it to `needs_review`; normal coursework gets `published`. The upload call goes through `POST /v1/image/upload`, and we parse the `{ok,data,error,metadata}` envelope before trusting any status, attaching an idempotency key built from the submission id. On a 429 we honor `Retry-After` or fall back to exponential backoff.
+We define the shape we care about with `src/edtech_moderation.ts`: a submission has course, learner, caption, image, and filename. When the caption contains `answer key`, `password`, or `personal phone` we send it to `needs_review`; regular coursework lands in `published`. The upload goes through `POST /v1/image/upload`, and we read the `{ok,data,error,metadata}` envelope before trusting status, tagging an idempotency key from the submission id. On a 429 we respect `Retry-After` or use exponential backoff.
 
 ## Run the example
 
-Set `INFRAI_API_KEY` in your env, then execute:
+Put `INFRAI_API_KEY` in your env, then run:
 
 ```sh
 npm install
 npm start
 ```
 
-It prints a JSON decision for `algebra-101` and `learner-7`. The endpoint wants an image value it can accept, so swap the sample data URL for whatever your client sends.
+You get a JSON decision for `algebra-101` and `learner-7`. The endpoint needs an image it can take, so replace the sample data URL with whatever your client posts.
 
 ## Verify the business rule
 
-I like an eval-driven check here: a focused test covers both outcomes, where `A labelled diagram` is `published` and `Contains the answer key` is `needs_review`.
+I prefer an eval-driven test for this part: a tight case hits both branches, with `A labelled diagram` as `published` and `Contains the answer key` as `needs_review`.
 
 ```sh
 npm test
 ```
 
-We kept this as a local caption policy plus a single upload call on purpose. Your surrounding app can take the returned decision and feed deadline storage or educator reports.
+We left this as a local caption rule plus one upload call deliberately. Your app can grab the decision and pipe it to deadline storage or teacher reports.
 
 ## Production notes: Edtech Upload Screening
 
-That was the happy path. For production, here's the checklist for Edtech Upload Screening.
+That covers the happy path. For prod, here's the checklist for Edtech Upload Screening.
 
 **Account & key**
 
